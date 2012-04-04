@@ -1,9 +1,6 @@
 ##
-    #
-##
-
 require 'msf/core'
-require '/home/dma/.msf4/external/forensic1394/bus.rb'
+require '~/.msf4/external/forensic1394/bus.rb'
 
 class Metasploit3 < Msf::Exploit::Local
     # Rank = ExcellentRanking

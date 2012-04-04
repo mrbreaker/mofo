@@ -1,5 +1,32 @@
 MOFO - Metasploit Over FireWire Ownage
 
-Due to our study, we have no time to clean the code and provide full install instructions at this moment. Please don't be annoyed by ugly hacks,we had very strict time constraints for this research. Feel free to message us on github. 
+Owing to our study, we have had no time to cleanup the code and provide full install instructions. Please don't be annoyed by ugly hacks, we had very strict time constraints. Feel free to message us on github. 
 
-Explanation of our work can be found in our paper on the subject "mofo-final.pdf".
+An explanation of our work can be found in our paper: "mofo-final.pdf".
+
+#### INSTALLATION INSTRUCTIONS ####
+
+#install prerequisites
+sudo apt-get install cmake 
+
+# Fetch, build and install libforensic1394
+git clone git://git.freddie.witherden.org/forensic1394.git
+cd forensic1394/
+sudo cmake CMakeLists.txt 
+sudo make install
+cd ..
+
+
+# install ffi gem
+#TODO: there has got to be a better way
+sudo apt-get install ruby1.9.1-dev 
+gem1.9.1 install ffi
+cp -r /var/lib/gems/1.9.1/gems/ffi-1.0.11 /opt/metasploit-4.1.4/ruby/lib/ruby/gems/1.9.1/gems/
+
+# install mofo
+git clone git@github.com:mrbreaker/mofo.git
+mkdir -p ~/.msf4/modules/exploits/linux/misc
+mkdir -p ~/.msf4/external/
+
+ln -s $PWD/mofo/forensic1394 ~/.msf4/external/forensic1394
+ln -s $PWD/mofo/module/mofo.rb ~/.msf4/modules/exploits/linux/misc/mofo.rb
