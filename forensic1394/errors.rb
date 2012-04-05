@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #############################################################################
 #  This file is part of libforensic1394.                                    #
 #  Copyright (C) 2010  Freddie Witherden <freddie@witherden.org>            #
@@ -18,8 +17,6 @@
 #  <http://www.gnu.org/licenses/>.                                          #
 #############################################################################
 
-
-##
 #  Possible result codes from a forensic1394 function call.  These are
 #  extracted from the forensic1394.h file.
 
@@ -51,9 +48,6 @@ def process_result(result, fname)
     if result == ResultCode::SUCCESS
         return
     end
-
-    # Perform a local import to avoid cyclic dependencies
-    # require 'functions'
     
     # Maybe decode?
     err = fname + ": " + Forensic1394.get_result_str(result)

@@ -66,7 +66,7 @@ module Forensic1394
 	#const char *forensic1394_get_device_product_name(forensic1394_dev *dev)
 	attach_function :get_device_product_name,:forensic1394_get_device_product_name, [:pointer ], :string
 
-    #const char *forensic1394_get_device_product_id(forensic1394_dev *dev)
+        #const char *forensic1394_get_device_product_id(forensic1394_dev *dev)
 	attach_function :get_device_product_id,:forensic1394_get_device_product_id, [:pointer ], :int32
 
 	#const char *forensic1394_get_device_vendor_name(ferensic1394_dev *dev)
@@ -78,13 +78,10 @@ module Forensic1394
 	#int forensic1394_get_device_request_size(forensic1394_dev *dev);
 	attach_function :get_device_request_size,:forensic1394_get_device_request_size, [:pointer ], :int32 
 
-	attach_function :fu, :fu, [:pointer ], :pointer
-
-
 	#struct { uint64_t addr, size_t len, void *buf }
 	class Req < FFI::Struct
-		    layout	:addr, :uint64,
-				    :len,	:uint32,
-		    		:buf,	:pointer
+		    layout    :addr, :uint64,
+                              :len, :uint32,
+                              :buf, :pointer
 	end
 end

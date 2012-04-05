@@ -37,7 +37,6 @@ class Bus
         p = FFI::Pointer.new(devlist)
         
         devlist = p.read_array_of_pointer(ndev.get_int(0)) 
-        
 
         # If ndev is < 0 then it contains a result status code
         if ndev.get_int(0) < 0
