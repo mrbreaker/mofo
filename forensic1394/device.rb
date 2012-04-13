@@ -49,7 +49,7 @@ class Device
         @vendor_id = Forensic1394.get_device_vendor_id(@devptr)
         @request_size = Forensic1394.get_device_request_size(@devptr)
         
-        @csr = FFI::Buffer.new(4, 256, true)
+        @csr = FFI::MemoryPointer.new(4, 256, true)
         Forensic1394.get_device_csr(@devptr, @csr)
     end
     
@@ -68,7 +68,7 @@ class Device
     # device is stale, an exception raised.
     
     def open
-        checkStale()
+        checkStale
         process_result(Forensic1394.open_device(@devptr), 'Forensic1394.open_device')
     end
     
@@ -85,7 +85,7 @@ class Device
     # Checks to see if the device is open or not, returning a boolean value.
     # In the case of a stale handle false is returned.
     
-    def isOpen
+    def isopen
         if @stale
             return false
         else
@@ -98,18 +98,55 @@ class Device
     # The device must be open and the handle can not be stale.
     # Requests larger than @request_size will automatically be
     # broken down into smaller chunks.  The resulting data is
-    # returned. 
+    # returned.  An exception is raised should an error occur.  The
+    # optional buf parameter can be used to pass a specific ctypes
+    # c_char array to read into.  If no buffer is passed then
+    # create_string_buffer will be used to allocate one.
     
-    def read (addr, numb)
+    def read (addr, numb, buf=nil)
+        if buf == nil
+            # No buffer passed; allocate one
+            buf = FFI::MemoryPointer.new(1, numb, true)
+        else
+            raise "IMPLEMENT ME"
+        end
+        
         # Break the request up into rs size chunks; if numb % rs = 0 then
         # lens may have an extra element; zip will take care of this
         rs = @request_size
         addrs = (addr..addr + numb).step(rs)
         lens = [rs] * (Integer(numb) / Integer(rs)) + [numb % rs]
-        return readreq(addrs.zip(lens))
-        #buf = FFI::Buffer.new(1, numb, true)
-        #readreq(addrs.zip(lens), buf)
-        #return buf.get_bytes(0,numb)
+        readreq(addrs.zip(lens), buf)
+        return buf.get_bytes(0,numb)
+    end
+    
+    ##
+    # Performs a batch of read requests of the form: [(addr1, len1),
+    # (addr2, len2), ...] and returns a generator yielding, in
+    # sequence, (addr1, buf1), (addr2, buf2), ..., .  This is useful
+    # when performing a series of `scatter reads' from a device.
+    
+    def readv (req)
+        checkStale()
+        # Create the request buffer
+        sum = 0
+        for addr, numb in req
+            sum += numb
+        end
+        buf = FFI::MemoryPointer.new(1, sum, true)
+        
+        # Use readreq to read the requests into buf
+        readreq(req, buf)
+        
+        # Generate the resulting buffers
+        off = 0
+        answers = []
+        for addr, numb in req
+            answers << [[addr, buf.get_pointer(off)]]
+            off += numb
+        end
+
+        return answers
     end
     
     ##
@@ -119,7 +156,7 @@ class Device
     # chunks.  Uses writev internally.
     
     def write (addr, buf)
-        checkStale()
+        checkStale
         # Break up the request
         req = []
         (0..buf.size).step(@request_size) do |off|
@@ -135,16 +172,15 @@ class Device
     
     def writev (req)
         checkStale()
-        if isOpen() == 0
+        if isopen() == 0
             raise "Forensic1394Exception", "not open"
         end
        
         # Prepare the request array(addr, len, buf)
         for addr, buf in req
             creq = Forensic1394::Req.new()
-	    b = FFI::MemoryPointer.new(:char,buf.size);
-	    b.write_array_of_char(buf.to_s)
-
+            b = FFI::MemoryPointer.new(1, buf.size, true)
+            b.put_bytes(0, buf.to_s)
             creq[:addr]=addr
             creq[:len]=buf.size
             creq[:buf]= b
@@ -215,29 +251,24 @@ class Device
     ##
     # Internal low level read function.
     
-    def readreq(req)
-        if isOpen() == 0
+    def readreq (req, buf)
+        if isopen() == 0
             raise Forensic1394Exception, "not open"
         end
          
+        # Create the request tuples
         off = 0 
-        buf = ""	
         for addr, numb in req
-            #set up the struct for passing
             creq = Forensic1394::Req.new
             creq[:addr] = addr
             creq[:len]=numb
-            
-	    b = FFI::MemoryPointer.new(:char,numb)
-	    creq[:buf]= b
- 
-            # Dispatch the request
+            creq[:buf]= buf.slice(off, numb)
+
+            # Dispatch the requests
             status = Forensic1394.read_device_v(@devptr, creq, 1)
-	    buff += b.read_array_of_char()
             
             process_result(status, "Forensic1394.read_device_v")
             off += numb
         end
-	return buff
     end
 end
