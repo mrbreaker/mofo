@@ -11,7 +11,7 @@ BITS 32
 	inc eax
 	int 0x80	; call fork
 	test eax,eax
-	jnz child
+	jz child
 
 
 	popa		; parent return
