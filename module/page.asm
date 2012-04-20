@@ -5,7 +5,8 @@ BITS 32
 	; 
 	;fork spawn
 	;
- 
+
+    mov ecx,eax
 	xor eax,eax
 	inc eax
 	inc eax
@@ -19,4 +20,6 @@ BITS 32
 	add esp,4	
 	jmp [esp-4] 
 child:
+    mov esp,ecx
+    sub esp,8
 	; exec payload

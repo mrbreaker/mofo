@@ -20,9 +20,8 @@ SAVEIP:
 ;  	mov ebp,0	; ul pgoff ( unused ANON )
 	int 0x80	;	
 
-    sar ecx,1;
-    sub eax,ecx ; set it at half page
-    mov esp,eax
+    shr ecx,1;
+    add eax,ecx ; set it at half page
 ; setup pattern / copy code TODO
 	mov word [eax], 0xe0ff ; jmp eax NOTE endianness
 	
