@@ -21,5 +21,5 @@ BITS 32
 	jmp [esp-4] 
 child:
     mov esp,ecx
-    sub esp,8
+    sub esp,2048
 	; exec payload
