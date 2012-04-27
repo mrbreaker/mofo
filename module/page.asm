@@ -17,8 +17,7 @@ BITS 32
 
 	popa		; parent return
 	sub dword [esp],5	; length of original call
-	add esp,4	
-	jmp [esp-4] 
+    ret
 child:
     mov esp,ecx
     sub esp,2048
