@@ -24,9 +24,9 @@ sudo gem1.9.1 install ffi
 sudo cp -r /var/lib/gems/1.9*/gems/ffi-1* /opt/metasploit-4*/ruby/lib/ruby/gems/1.9*/gems/
 
 # install mofo
-git clone git@github.com:mrbreaker/mofo.git
+git clone git://github.com/mrbreaker/mofo.git
 mkdir -p ~/.msf4/modules/exploits/linux/misc
 mkdir -p ~/.msf4/external/
 
 ln -s $PWD/mofo/forensic1394 ~/.msf4/external/forensic1394
-ln -s $PWD/mofo/module/mofo.rb ~/.msf4/modules/exploits/linux/misc/mofo.rb
+ln -s $PWD/mofo/module/mofo.rb ~/.msf4/modules/exploits/multi/misc/mofo.rb
